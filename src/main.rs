@@ -1,24 +1,34 @@
-use std::{
-    io::{Read, Write},
-    net::TcpListener,
-};
+use std::io;
 
-fn main() {
+use tokio::net::{TcpListener, TcpStream};
+
+#[tokio::main]
+async fn main() -> io::Result<()> {
     let port = 6379;
-    let server_connection = match TcpListener::bind(("127.0.0.1", port)) {
-        Ok(v) => v,
-        Err(e) => panic!("Couldn't connect to 127.0.0.1:{port}. {}", e),
-    };
+    let server = TcpListener::bind(("127.0.0.1", port)).await?;
 
-    for stream in server_connection.incoming() {
-        if let Err(_) = stream {
-            eprintln!("Connection couldn't be resolved");
-            continue;
+    loop {
+        match server.accept().await {
+            Err(_) => eprintln!("Error at accepting connection"),
+            Ok((stream, _)) => {
+                tokio::spawn(accept_connection(stream));
+            }
         }
-
-        let mut stream = stream.unwrap();
-        let mut buf = [0; 512];
-        stream.read(&mut buf).unwrap();
-        stream.write(b"+PONG\r\n").unwrap();
     }
+}
+
+async fn accept_connection(conn: TcpStream) -> io::Result<()> {
+    loop {
+        let mut buf = [0; 512];
+        println!("trying...");
+        match conn.try_read(&mut buf) {
+            Ok(0) => break,
+            Ok(_) => conn.try_write("+PONG\r\n".as_bytes()),
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => continue,
+            Err(e) => return Err(e),
+        }
+        .unwrap();
+    }
+
+    Ok(())
 }
