@@ -20,10 +20,13 @@ async fn main() -> io::Result<()> {
 async fn accept_connection(conn: TcpStream) -> io::Result<()> {
     loop {
         let mut buf = [0; 512];
-        println!("trying...");
         match conn.try_read(&mut buf) {
             Ok(0) => break,
-            Ok(_) => conn.try_write("+PONG\r\n".as_bytes()),
+            Ok(_) => {
+                let command = String::from_utf8_lossy(&buf).to_string();
+                parse_command(command);
+                conn.try_write("+PONG\r\n".as_bytes())
+            }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => continue,
             Err(e) => return Err(e),
         }
@@ -31,4 +34,8 @@ async fn accept_connection(conn: TcpStream) -> io::Result<()> {
     }
 
     Ok(())
+}
+
+fn parse_command(command: String) {
+    todo!()
 }
