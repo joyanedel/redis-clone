@@ -1,3 +1,5 @@
+use regex::Regex;
+
 #[derive(PartialEq)]
 enum RESPValues {
     // RESP2
@@ -22,6 +24,40 @@ impl TryFrom<&[&str]> for RESPValues {
     type Error = ();
 
     fn try_from(value: &[&str]) -> Result<Self, Self::Error> {
+        if value.len() == 0 {
+            todo!("Returns error if len of value is 0");
+        }
+
+        let mut value = value.iter();
+        let first_element = value.next().unwrap();
+
+        // Match all single line elements
+        // Match simple strings
+        if let Some(v) = Regex::new(r"^\+(?<value>.+)$")
+            .unwrap()
+            .captures(&first_element)
+        {
+            return Ok(Self::SimpleString(v["value"].to_string()));
+        }
+        // Match simple errors
+        if let Some(v) = Regex::new("^-(?<value>.+)$")
+            .unwrap()
+            .captures(&first_element)
+        {
+            return Ok(Self::SimpleError(v["value"].to_string()));
+        }
+        // Match 64bit integers
+        if let Some(v) = Regex::new(r"^:(?<value>(\+|-)?\d+)$")
+            .unwrap()
+            .captures(&first_element)
+        {
+            return match &v["value"].parse::<i64>() {
+                Ok(v) => Ok(Self::Integer(*v)),
+                Err(_) => todo!("Resolve Error in integer match"),
+            };
+        }
+
+        // Match all 2+ lines elements
         Ok(Self::BigNumber)
     }
 }
@@ -52,6 +88,14 @@ mod tests {
         let result = RESPValues::try_from(value.as_ref());
 
         assert!(result.is_ok_and(|r| r == RESPValues::Integer(2)));
+    }
+
+    #[test]
+    fn parse_negative_integer_correctly() {
+        let value = vec![":-2"];
+        let result = RESPValues::try_from(value.as_ref());
+
+        assert!(result.is_ok_and(|r| r == RESPValues::Integer(-2)));
     }
 
     #[test]
