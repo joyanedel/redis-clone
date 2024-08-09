@@ -85,8 +85,21 @@ impl TryFrom<&str> for RESPValues {
     }
 }
 
+impl ToString for RESPValues {
+    fn to_string(&self) -> String {
+        match self {
+            Self::SimpleString(v) => format!("+{v}\r\n"),
+            Self::SimpleError(v) => format!("-{v}\r\n"),
+            Self::Integer(v) => format!(":{v}\r\n"),
+            Self::BulkString(v) => format!("${}\r\n{}\r\n", v.len(), v),
+            Self::Array(v) => String::new(),
+            _ => unimplemented!(),
+        }
+    }
+}
+
 #[cfg(test)]
-mod tests {
+mod impl_try_from_for_resp {
     use super::RESPValues;
 
     #[test]
@@ -163,5 +176,69 @@ mod tests {
                 RESPValues::Array(vec![RESPValues::SimpleString("PING".to_string())]),
                 RESPValues::BulkString("PONG".to_string())
             ])));
+    }
+}
+
+#[cfg(test)]
+mod impl_to_string_for_resp {
+    use super::RESPValues;
+
+    #[test]
+    fn simple_string_to_string() {
+        let value = RESPValues::SimpleString(String::from("PING"));
+        let result = value.to_string();
+        assert_eq!(&result, "+PING\r\n");
+    }
+
+    #[test]
+    fn simple_error_to_string() {
+        let value = RESPValues::SimpleError(String::from("TEST ERROR"));
+        let result = value.to_string();
+        assert_eq!(&result, "-TEST ERROR\r\n");
+    }
+
+    #[test]
+    fn integer_to_string() {
+        let value = RESPValues::Integer(10);
+        let result = value.to_string();
+        assert_eq!(&result, ":10\r\n");
+    }
+
+    #[test]
+    fn negative_integer_to_string() {
+        let value = RESPValues::Integer(-10);
+        let result = value.to_string();
+        assert_eq!(&result, ":-10\r\n");
+    }
+
+    #[test]
+    fn bulk_string_to_string() {
+        let value = RESPValues::BulkString(String::from("testing"));
+        let result = value.to_string();
+        assert_eq!(&result, "$7\r\ntesting\r\n");
+    }
+
+    #[test]
+    fn empty_array_to_string() {
+        let value = RESPValues::Array(vec![]);
+        let result = value.to_string();
+        assert_eq!(&result, "*0\r\n");
+    }
+
+    #[test]
+    fn one_item_array_to_string() {
+        let value = RESPValues::Array(vec![RESPValues::Integer(2)]);
+        let result = value.to_string();
+        assert_eq!(&result, "*1\r\n:2\r\n");
+    }
+
+    #[test]
+    fn nested_items_array_to_string() {
+        let value = RESPValues::Array(vec![
+            RESPValues::Integer(2),
+            RESPValues::Array(vec![RESPValues::BulkString(String::from("PONG"))]),
+        ]);
+        let result = value.to_string();
+        assert_eq!(&result, "*2\r\n:2\r\n*1\r\n$4\r\nPONG\r\n");
     }
 }
