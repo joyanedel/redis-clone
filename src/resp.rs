@@ -58,6 +58,19 @@ impl TryFrom<&[&str]> for RESPValues {
         }
 
         // Match all 2+ lines elements
+        // Match bulk string
+        if let Some(_) = Regex::new(r"^\$\d+").unwrap().captures(&first_element) {
+            return match value.next() {
+                None => todo!("Handle none in match bulk string"),
+                Some(v) => Ok(Self::BulkString(v.to_string())),
+            };
+        }
+
+        // Match arrays
+        if let Some(v) = Regex::new(r"^*:\d+$").unwrap().captures(&first_element) {
+            unimplemented!("Array match unimplemented")
+        }
+
         Ok(Self::BigNumber)
     }
 }
@@ -100,10 +113,18 @@ mod tests {
 
     #[test]
     fn parse_bulk_string_correctly() {
-        let value = vec!["$Bulk"];
+        let value = vec!["$4", "Bulk"];
         let result = RESPValues::try_from(value.as_ref());
 
         assert!(result.is_ok_and(|r| r == RESPValues::BulkString("Bulk".to_string())));
+    }
+
+    #[test]
+    fn parse_empty_bulk_string_correctly() {
+        let value = vec!["$0", ""];
+        let result = RESPValues::try_from(value.as_ref());
+
+        assert!(result.is_ok_and(|r| r == RESPValues::BulkString(String::new())));
     }
 
     #[test]
