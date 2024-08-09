@@ -78,6 +78,18 @@ impl TryFrom<&str> for RESPValues {
                 Err(_) => todo!("Array size not usize parseable"),
             };
             let mut array = Vec::with_capacity(n);
+            let mut remaining_elements = rest_elements.to_string();
+
+            for _ in 0..n {
+                let result = match RESPValues::try_from(remaining_elements.as_str()) {
+                    Ok(v) => v,
+                    Err(_) => todo!("Handle recursive array try from"),
+                };
+
+                remaining_elements = remaining_elements.replacen(&result.to_string(), "", 1);
+                array.push(result);
+            }
+
             return Ok(Self::Array(array));
         }
 
@@ -92,7 +104,12 @@ impl ToString for RESPValues {
             Self::SimpleError(v) => format!("-{v}\r\n"),
             Self::Integer(v) => format!(":{v}\r\n"),
             Self::BulkString(v) => format!("${}\r\n{}\r\n", v.len(), v),
-            Self::Array(v) => String::new(),
+            Self::Array(v) => {
+                let length = v.len();
+                let elements_repr: Vec<_> = v.iter().map(|e| e.to_string()).collect();
+                let elements_repr = elements_repr.join("");
+                format!("*{length}\r\n{elements_repr}")
+            }
             _ => unimplemented!(),
         }
     }
