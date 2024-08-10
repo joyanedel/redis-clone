@@ -3,7 +3,7 @@ use crate::resp::RESPValues;
 #[derive(PartialEq, Debug)]
 pub enum RedisCommand {
     Ping(Option<String>),
-    Echo(Option<String>),
+    Echo(String),
     CommandDocs(Option<String>),
 }
 
@@ -33,6 +33,15 @@ impl TryFrom<RESPValues> for RedisCommand {
                 _ => None,
             });
             return Ok(Self::Ping(echoed_string));
+        }
+
+        // match echo
+        if array[0] == RESPValues::BulkString("ECHO".to_string()) {
+            let echoed_string = match array.get(1) {
+                Some(RESPValues::BulkString(v)) => v.to_owned(),
+                _ => todo!("raise an error if echoed string is absent in echo command"),
+            };
+            return Ok(RedisCommand::Echo(echoed_string));
         }
 
         unimplemented!()
@@ -83,5 +92,16 @@ mod command_tests {
         let result = RedisCommand::try_from(value);
 
         assert!(result.is_ok_and(|r| r == RedisCommand::Ping(Some("testing".to_string()))));
+    }
+
+    #[test]
+    fn parse_echo_with_string_correctly() {
+        let value = RESPValues::Array(vec![
+            RESPValues::BulkString("ECHO".to_string()),
+            RESPValues::BulkString("testing".to_string()),
+        ]);
+        let result = RedisCommand::try_from(value);
+
+        assert!(result.is_ok_and(|r| r == RedisCommand::Echo("testing".to_string())));
     }
 }

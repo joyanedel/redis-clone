@@ -49,6 +49,7 @@ fn responds_to_client(command: RedisCommand, conn: &TcpStream) -> io::Result<usi
     match command {
         RedisCommand::Ping(Some(v)) => conn.try_write(format!("+\"{v}\"\r\n").as_bytes()),
         RedisCommand::Ping(_) => conn.try_write("+PONG\r\n".as_bytes()),
+        RedisCommand::Echo(v) => conn.try_write(format!("+\"{v}\"\r\n").as_bytes()),
         _ => unimplemented!(),
     }
     // conn.try_write("+PONG\r\n".as_bytes())
