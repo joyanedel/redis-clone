@@ -1,6 +1,6 @@
 use std::io;
 
-use redis_clone::resp::RESPValues;
+use redis_clone::{commands::RedisCommand, resp::RESPValues};
 use tokio::net::{TcpListener, TcpStream};
 
 #[tokio::main]
@@ -38,6 +38,9 @@ async fn accept_connection(conn: TcpStream) -> io::Result<()> {
 }
 
 fn parse_command(command: String) {
-    let command = RESPValues::try_from(command.as_str());
-    println!("{command:?}");
+    let client_input = RESPValues::try_from(command.as_str()).expect("couldn't parse client input");
+    let command =
+        RedisCommand::try_from(client_input.clone()).expect("couldn't parse client command");
+    println!("Input: {client_input:?}");
+    println!("Command: {command:?}");
 }

@@ -1,8 +1,6 @@
-use std::any::Any;
-
 use crate::resp::RESPValues;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum RedisCommand {
     Ping(Option<String>),
     Echo(Option<String>),
@@ -37,7 +35,7 @@ impl TryFrom<RESPValues> for RedisCommand {
             return Ok(Self::Ping(echoed_string));
         }
 
-        Ok(Self::Ping(None))
+        unimplemented!()
     }
 }
 

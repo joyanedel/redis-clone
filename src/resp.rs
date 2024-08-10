@@ -1,6 +1,6 @@
 use regex::Regex;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum RESPValues {
     // RESP2
     SimpleString(String),
