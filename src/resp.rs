@@ -1,7 +1,7 @@
 use regex::Regex;
 
-#[derive(PartialEq)]
-enum RESPValues {
+#[derive(PartialEq, Debug)]
+pub enum RESPValues {
     // RESP2
     SimpleString(String),
     SimpleError(String),

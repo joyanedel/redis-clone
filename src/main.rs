@@ -1,5 +1,6 @@
 use std::io;
 
+use redis_clone::resp::RESPValues;
 use tokio::net::{TcpListener, TcpStream};
 
 #[tokio::main]
@@ -37,5 +38,6 @@ async fn accept_connection(conn: TcpStream) -> io::Result<()> {
 }
 
 fn parse_command(command: String) {
-    todo!()
+    let command = RESPValues::try_from(command.as_str());
+    println!("{command:?}");
 }
