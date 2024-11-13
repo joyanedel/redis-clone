@@ -7,8 +7,12 @@ pub enum RedisCommand {
     CommandDocs(Option<String>),
 }
 
+pub enum RedisCommandError {
+    NotImplemented,
+}
+
 impl TryFrom<RESPValues> for RedisCommand {
-    type Error = ();
+    type Error = RedisCommandError;
     fn try_from(value: RESPValues) -> Result<Self, Self::Error> {
         let array = match value {
             RESPValues::Array(v) if !v.is_empty() => v,
@@ -44,7 +48,7 @@ impl TryFrom<RESPValues> for RedisCommand {
             return Ok(RedisCommand::Echo(echoed_string));
         }
 
-        unimplemented!()
+        return Err(RedisCommandError::NotImplemented);
     }
 }
 

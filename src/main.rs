@@ -1,6 +1,9 @@
 use std::io;
 
-use redis_clone::{commands::RedisCommand, resp::RESPValues};
+use redis_clone::{
+    commands::{RedisCommand, RedisCommandError},
+    resp::RESPValues,
+};
 use tokio::net::{TcpListener, TcpStream};
 
 #[tokio::main]
@@ -32,20 +35,25 @@ async fn accept_connection(conn: TcpStream) -> io::Result<()> {
             Err(e) => return Err(e),
         };
 
-        responds_to_client(command, &conn).expect("couldn't respond to client");
+        if let Err(error) = command {
+            reply_error_to_client(error, &conn).expect("couldn't reply to client");
+        } else {
+            reply_command_to_client(command.ok().unwrap(), &conn)
+                .expect("couldn't respond to client");
+        }
+
+        // responds_to_client(command, &conn).expect("couldn't respond to client");
     }
 
     Ok(())
 }
 
-fn parse_command(command: String) -> RedisCommand {
+fn parse_command(command: String) -> Result<RedisCommand, RedisCommandError> {
     let client_input = RESPValues::try_from(command.as_str()).expect("couldn't parse client input");
-    let command =
-        RedisCommand::try_from(client_input.clone()).expect("couldn't parse client command");
-    command
+    RedisCommand::try_from(client_input.clone())
 }
 
-fn responds_to_client(command: RedisCommand, conn: &TcpStream) -> io::Result<usize> {
+fn reply_command_to_client(command: RedisCommand, conn: &TcpStream) -> io::Result<usize> {
     match command {
         RedisCommand::Ping(Some(v)) => conn.try_write(format!("+\"{v}\"\r\n").as_bytes()),
         RedisCommand::Ping(_) => conn.try_write("+PONG\r\n".as_bytes()),
@@ -53,4 +61,12 @@ fn responds_to_client(command: RedisCommand, conn: &TcpStream) -> io::Result<usi
         _ => unimplemented!(),
     }
     // conn.try_write("+PONG\r\n".as_bytes())
+}
+
+fn reply_error_to_client(command_error: RedisCommandError, conn: &TcpStream) -> io::Result<usize> {
+    match command_error {
+        RedisCommandError::NotImplemented => {
+            conn.try_write("+Command not implemented\r\n".as_bytes())
+        }
+    }
 }
